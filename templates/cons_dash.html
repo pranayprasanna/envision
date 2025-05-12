@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EnVision Consumer Dashboard</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* Reset and global styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1c1c1c, #3a3a3a);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    /* Header styles */
+    header {
+      background: linear-gradient(90deg, #003937, #008a86);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+    .header-left img {
+      max-height: 100px;
+    }
+    .header-center {
+      position: relative;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .header-search {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #005f56;
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+    }
+    .header-search input {
+      background: #005f56;
+      border: none;
+      color: #fff;
+      font-size: 1.35rem;
+      width: 500px;
+    }
+    .header-search input::placeholder {
+      color: #cce7e3;
+    }
+    .header-search button {
+      background: #15c045;
+      border: none;
+      color: #fff;
+      border-radius: 3px;
+      font-size: 0.9rem;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+    }
+    .header-search button:hover {
+      background: #12a83c;
+    }
+    .search-results {
+      position: absolute;
+      top: 2.8rem;
+      width: 100%;
+      background: #005f56;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none;
+    }
+    .search-result {
+      padding: 0.5rem;
+      border-bottom: 1px solid #004e45;
+      cursor: pointer;
+      color: #fff;
+    }
+    .search-result:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+    .header-right h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 500;
+      margin: 0;
+    }
+    /* Date/time display in header */
+    .header-right p#currentDateTime {
+      font-size: 0.9rem;
+      margin: 0;
+      color: #cce7e3;
+    }
+    .logout-btn {
+      background: #616161;
+      padding: 10px 20px;
+      border: none;
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+      font-weight: 500;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      position: absolute;
+      top: 0;
+      right: 2rem;
+    }
+    .logout-btn:hover {
+      background: #9f9f9f;
+    }
+    
+    /* Dashboard layout */
+    .dashboard {
+      flex: 1;
+      padding: 2rem;
+      display: grid;
+      gap: 2rem;
+      grid-template-columns: 1fr; /* single column by default */
+    }
+    @media (min-width: 992px) {
+      .dashboard {
+        grid-template-columns: 1fr 1fr 1fr; /* 3 columns on wide screens */
+      }
+    }
+    .chart-container {
+      background: #001c13;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+      position: relative;
+      transition: transform 0.3s ease;
+      margin-bottom: 0;
+    }
+    .chart-container:hover {
+      transform: translateY(-5px);
+    }
+    .chart-container h2 {
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  color: #15c045;
+  font-size: 1.8rem;
+  border-bottom: 2px solid #15c045;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+    /* AEPDS Card Styling */
+    .aepds-card {
+      text-align: center;
+    }
+    .aepds-card h2 {
+      font-family: 'Poppins', sans-serif;
+      border-bottom: 2px solid #15c045;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+      font-size: 1.8rem;
+    }
+    /* Gauge Meter Styles for AEPDS */
+    .gauge-container {
+      position: relative;
+      width: 250px;  /* Increased size */
+      height: 130px; /* Increased size */
+      margin: 0 auto 15px auto;
+    }
+    .gauge {
+      width: 100%;
+      height: 100%;
+    }
+    .gauge-bg {
+      stroke: #444;
+      stroke-width: 10;
+      fill: none;
+    }
+    .gauge-fill {
+      stroke: #15c045;
+      stroke-width: 10;
+      fill: none;
+      stroke-linecap: round;
+      stroke-dasharray: 160;
+      stroke-dashoffset: 160;
+      transition: stroke-dashoffset 1s ease-in-out;
+    }
+    .gauge-value {
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 40px; /* Increased gauge value size */
+      font-weight: bold;
+      color: #15c045;
+    }
+    .aepds-info {
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+    
+    /* New Product Emissions Estimator Card */
+    .product-estimator {
+      background: #001c13;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .product-estimator h2 {
+      font-family: 'Poppins', sans-serif;
+      border-bottom: 2px solid #15c045;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+      color: #15c045;
+      font-size: 1.8rem;
+    }
+    .product-estimator label {
+  display: block;
+  margin-top: 1.5rem;      /* space above each label */
+  margin-bottom: 0.5rem;   /* space below each label */
+  font-size: 1.2rem;       /* larger label text */
+}
+.product-estimator select,
+.product-estimator input {
+  width: 90%;              /* a bit wider */
+  padding: 0.75rem 1rem;    /* more clickable area */
+  margin-bottom: 1rem;      /* space below each field */
+  font-size: 1.1rem;        /* larger field text */
+  border-radius: 5px;       /* match card styling */
+  border: 1px solid #333;   
+}
+.product-estimator button {
+  display: block;
+  width: 50%;             /* or whatever width you prefer */
+  margin: 1.5rem auto 0;   /* space above, centered */
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
+  border-radius: 5px;
+}
+
+/* Result spacing & sizing */
+.product-estimator .est-result {
+  margin-top: 1.5rem;      /* space above the result */
+  font-size: 1.3rem;       /* larger result text */
+  font-weight: 500;
+  color: #15c045;          /* keep it consistent with your green */
+}
+
+    .product-estimator button:hover {
+      background: #12a83c;
+    }
+    .est-result {
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 1rem;
+      color: #15c045;
+    }
+    
+    /* Dropdown for timeline selection */
+    .chart-container select {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: none;
+      background-color: #005f56;
+      color: #fff;
+      font-size: 1rem;
+      z-index: 2;
+      cursor: pointer;
+    }
+    .chart-canvas-wrapper {
+      height: 300px;
+    }
+    .chart-canvas-wrapper canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #totalPCF {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #15c045;
+    }
+
+    .suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    }
+    .suggestion-item {
+    background: #002f2b;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .suggestion-item button {
+    margin-top: 0.5rem;
+    padding: 6px 12px;
+    background: #15c045;
+    border: none; border-radius: 4px;
+    color: #fff; cursor: pointer;
+    }
+    .suggestion-item button:hover {
+    background: #12a83c;
+    }
+
+    /* Transaction History */
+    .data-sections {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      padding: 2rem;
+    }
+    @media (min-width: 768px) {
+  .data-sections {
+        grid-template-columns: 1fr 1fr 1fr; /* 3 columns on wide screens */
+  }
+}
+
+    .transaction-history {
+      background: #001c13;
+      padding: 1rem;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease;
+    }
+    .transaction-history:hover {
+      transform: translateY(-5px);
+    }
+    .transaction-history h2 {
+  font-family: 'Poppins', sans-serif;
+  background: #001c13;
+  padding: 1rem 1rem 10px;  /* top/right/bottom */
+  margin: 0 0 15px;
+  text-align: center;
+  color: #15c045;
+  font-size: 1.8rem;
+  border-bottom: 2px solid #15c045;
+}
+    .table-container {
+      height: 350px;
+      overflow-y: auto;
+    }
+    .transaction-history table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .transaction-history th,
+    .transaction-history td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+    .transaction-history th {
+      color: #15c045;
+      background: #001c13;
+      font-weight: 500;
+    }
+    .transaction-history td {
+      color: #fff;
+    }
+    .transaction-history th.sortable {
+      cursor: pointer;
+    }
+    .transaction-history tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    /* Modal Overlay Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #001c13;
+      padding: 2rem;
+      border-radius: 8px;
+      position: relative;
+      width: 90%;
+      max-width: 600px;
+    }
+    .close-button {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #15c045;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <img src="/static/envision_logo.png" alt="EnVision Logo">
+    </div>
+    <div class="header-center">
+      <div class="header-search">
+        <input type="text" id="productSearchInput" placeholder="Search for products" />
+        <button onclick="searchProducts()">Search</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+    <div class="header-right">
+      <h2>Welcome, {{ name }}</h2>
+      <!-- Date and time display -->
+      <p id="currentDateTime"></p>
+      <button class="logout-btn" onclick="window.location.href='/logout'">Logout</button>
+    </div>
+  </header>
+  
+  <!-- Dashboard Section: 3-Column Layout -->
+  <div class="dashboard">
+    <!-- Footprint Over Time Card -->
+    <div class="chart-container">
+      <h2>Footprint Over Time</h2>
+      <!-- Dropdown to select timeline -->
+      <select id="timeScaleSelect" onchange="updateTimeScale()">
+        <option value="today">Today</option>
+        <option value="past7">Past 7 Days</option>
+        <option value="this_month">This Month</option>
+        <option value="this_year">This Year</option>
+        <option value="all_time">All Time</option>
+      </select>
+      <div class="chart-canvas-wrapper">
+        <canvas id="lineChart"></canvas>
+      </div>
+      <div id="totalPCF">Total PCF: 0.00</div>
+    </div>
+    
+    <!-- Sector-wise Footprint Card -->
+    <div class="chart-container">
+      <h2>Sector-wise Footprint</h2>
+      <div class="chart-canvas-wrapper">
+        <canvas id="doughnutChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- AEPDS Card with Gauge Visualization -->
+<div class="chart-container aepds-card">
+  <h2>Average Emissions Per Dollar Spent</h2>
+  
+  <div class="gauge-container">
+    <svg class="gauge" viewBox="0 0 100 50">
+      <!-- Background Arc -->
+      <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+      <!-- Dynamic Fill Arc -->
+      <path class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" />
+    </svg>
+    <div class="gauge-value" id="aepdsValue">0</div>
+  </div>
+  
+  <!-- Description line with extra margin at the bottom -->
+  <p class="aepds-info" style="margin-bottom: 1rem; font-size: 1rem;">
+    Lower is better.</p>
+    <p class="aepds-info" style="margin-bottom: 1rem; font-size: 1rem;"> This value represents your total product emissions per dollar spent.</p>
+  
+  <!-- Index line with bigger font and a bit of spacing on top -->
+  <p class="aepds-info" style="font-size: 1.1rem;">
+    <span style="color: red;">Red: &gt; 0.66</span> |
+    <span style="color: orange;">Amber: 0.33 - 0.66</span> |
+    <span style="color: green;">Green: &lt;= 0.33</span>
+  </p>
+</div>
+
+  </div>
+  
+  <!-- New Card Row: Product Emissions Estimator & Transaction History -->
+  <div class="data-sections">
+    <!-- Product Emissions Estimator Card -->
+    <div class="card product-estimator">
+      <h2>Product Emissions Estimator</h2>
+      <label for="estCategory">Product Category:</label>
+      <select id="estCategory">
+        <option value="Automobiles & components">Automobiles & components</option>
+        <option value="Chemicals">Chemicals</option>
+        <option value="Comm. equipm. & capital goods">Comm. equipm. & capital goods</option>
+        <option value="Computer, IT & telecom">Computer, IT & telecom</option>
+        <option value="Construction & commercial materials">Construction & commercial materials</option>
+        <option value="Food & Beverage">Food & Beverage</option>
+        <option value="Home durables, textiles, & equipment">Home durables, textiles, & equipment</option>
+        <option value="Packaging for consumer goods">Packaging for consumer goods</option>
+      </select>
+      <label for="estPrice">Price ($):</label>
+      <input type="text" id="estPrice" placeholder="Enter product price" />
+      <button class="btn" onclick="estimateEmissions()">Estimate Emissions</button>
+      <div class="est-result" id="estResult"></div>
+    </div>
+
+
+
+
+  <!-- Green Suggestions Card -->
+  <div class="chart-container">
+    <h2>Green Suggestions</h2>
+    <div class="suggestions-list">
+      {% if green_suggestions %}
+        {% for p in green_suggestions %}
+          <div class="suggestion-item">
+            <strong>{{ p.product_name }}</strong><br>
+            <small>{{ p.company_name }}</small><br>
+            <span>PCF: {{ "%.2f"|format(p.pcf) }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No greener options found yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+
+
+
+
+
+
+
+
+    <!-- Transaction History Card -->
+    <div class="transaction-history">
+      <h2>Transaction History</h2>
+      <div class="table-container">
+        <table id="transactionTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortTableByColumn(0, 'date')">Date</th>
+              <th class="sortable" onclick="sortTableByColumn(1, 'string')">Seller Name</th>
+              <th class="sortable" onclick="sortTableByColumn(2, 'string')">Product Name</th>
+              <th class="sortable" onclick="sortTableByColumn(3, 'number')">Quantity</th>
+              <th class="sortable" onclick="sortTableByColumn(4, 'number')">Amount</th>
+              <th class="sortable" onclick="sortTableByColumn(5, 'number')">Total PCF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if transactions %}
+              {% for t in transactions %}
+                <tr>
+                  <td>{{ t.date_time }}</td>
+                  <td>{{ t.seller_name }}</td>
+                  <td>{{ t.product_name }}</td>
+                  <td>{{ t.quantity }}</td>
+                  <td>${{ "%.2f"|format(t.amount) }}</td>
+                  <td>{{ "%.2f"|format(t.pcf) }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" style="text-align:center;">No transactions found.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Overlay for Product Details -->
+  <div id="overlayModal" class="modal">
+    <div class="modal-content">
+      <button class="close-button" onclick="closeModal()">X</button>
+      <div id="modalProductInfo"></div>
+      <canvas id="modalProductChart" style="height:300px;"></canvas>
+    </div>
+  </div>
+  
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Update date and time element
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById("currentDateTime").innerText = now.toLocaleString();
+    }
+    updateDateTime();
+
+    /* Data passed from Python/Jinja */
+    let todayLabels = {{ today_labels|tojson }};
+    let todayData = {{ today_data|tojson }};
+    
+    let past7Labels = {{ past7_labels|tojson }};
+    let past7Data = {{ past7_data|tojson }};
+    
+    let thisMonthLabels = {{ this_month_labels|tojson }};
+    let thisMonthData = {{ this_month_data|tojson }};
+    
+    let thisYearLabels = {{ this_year_labels|tojson }};
+    let thisYearData = {{ this_year_data|tojson }};
+    
+    let allTimeLabels = {{ all_time_labels|tojson }};
+    let allTimeData = {{ all_time_data|tojson }};
+    
+    let sectorLabels = {{ sector_labels|tojson }};
+    let sectorData = {{ sector_values|tojson }};
+    
+    let lineChart = null;
+    function initializeLineChart(labels, data) {
+      const lineCtx = document.getElementById('lineChart').getContext('2d');
+      if (lineChart) {
+        lineChart.destroy();
+      }
+      lineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Carbon Footprint',
+            data: data,
+            borderColor: '#15c045',
+            backgroundColor: 'rgba(21, 192, 69, 0.2)',
+            fill: true,
+            tension: 0.3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              ticks: { color: '#fff' }
+            },
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              ticks: { color: '#fff' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#fff' } }
+          }
+        }
+      });
+    }
+    
+    function updateTotalPCF(dataArray) {
+      let total = dataArray.reduce((acc, val) => acc + val, 0);
+      document.getElementById('totalPCF').innerText = "Total PCF: " + total.toFixed(2);
+    }
+    
+    // Function to update the chart based on dropdown selection
+    function updateTimeScale() {
+      const scale = document.getElementById("timeScaleSelect").value;
+      if (scale === "today") {
+        initializeLineChart(todayLabels, todayData);
+        updateTotalPCF(todayData);
+      } else if (scale === "past7") {
+        initializeLineChart(past7Labels, past7Data);
+        updateTotalPCF(past7Data);
+      } else if (scale === "this_month") {
+        initializeLineChart(thisMonthLabels, thisMonthData);
+        updateTotalPCF(thisMonthData);
+      } else if (scale === "this_year") {
+        initializeLineChart(thisYearLabels, thisYearData);
+        updateTotalPCF(thisYearData);
+      } else if (scale === "all_time") {
+        initializeLineChart(allTimeLabels, allTimeData);
+        updateTotalPCF(allTimeData);
+      }
+    }
+    
+    // Initialize chart with default selection ("today")
+    updateTimeScale();
+    
+    /* Sector-wise Doughnut Chart */
+    const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+    new Chart(doughnutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: sectorLabels,
+        datasets: [{
+          label: 'Sector-wise Footprint',
+          data: sectorData,
+          backgroundColor: ['#15c045', '#008a86', '#003937', '#001c13', '#ff9900', '#9900ff'],
+          borderColor: ['#fff', '#fff', '#fff', '#fff', '#fff', '#fff'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#fff' }
+          }
+        }
+      }
+    });
+    
+    /* Transaction Table Sorting */
+    let sortDirections = {};
+    function sortTableByColumn(columnIndex, dataType) {
+      const table = document.getElementById("transactionTable");
+      const tbody = table.querySelector("tbody");
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      sortDirections[columnIndex] = !sortDirections[columnIndex] || sortDirections[columnIndex] === 'desc' ? 'asc' : 'desc';
+      rows.sort((a, b) => {
+        const aText = a.cells[columnIndex].innerText.trim();
+        const bText = b.cells[columnIndex].innerText.trim();
+        if (dataType === "date") {
+          const aDate = new Date(aText);
+          const bDate = new Date(bText);
+          return sortDirections[columnIndex] === 'asc' ? aDate - bDate : bDate - aDate;
+        } else if (dataType === "number") {
+          const aNum = parseFloat(aText.replace(/[^0-9.-]+/g, ""));
+          const bNum = parseFloat(bText.replace(/[^0-9.-]+/g, ""));
+          return sortDirections[columnIndex] === 'asc' ? aNum - bNum : bNum - aNum;
+        } else if (dataType === "string") {
+          return sortDirections[columnIndex] === 'asc'
+            ? aText.localeCompare(bText)
+            : bText.localeCompare(aText);
+        }
+      });
+      rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    /* Product Search Functionality */
+    function searchProducts() {
+      const query = document.getElementById('productSearchInput').value;
+      if (!query) {
+        alert('Please enter a search term.');
+        return;
+      }
+      fetch(`/search_products?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          const resultsDiv = document.getElementById('searchResults');
+          resultsDiv.innerHTML = '';
+          resultsDiv.style.display = 'block';
+          if (data.products && data.products.length > 0) {
+            const minPCF = Math.min(...data.products.map(product => product.pcf));
+            data.products.forEach(product => {
+              const item = document.createElement('div');
+              item.className = 'search-result';
+              item.textContent = `${product.product_name} (${product.company_name})`;
+              if (product.pcf === minPCF) {
+                item.style.backgroundColor = 'green';
+              }
+              item.onclick = function() {
+                closeSearchResults();
+                showProductDetails(product);
+              };
+              resultsDiv.appendChild(item);
+            });
+          } else {
+            resultsDiv.textContent = 'No products found.';
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching products:', err);
+        });
+    }
+    
+    function closeSearchResults() {
+      document.getElementById('searchResults').style.display = 'none';
+    }
+    
+    document.addEventListener('click', function(event) {
+      const searchBar = document.querySelector('.header-search');
+      const resultsDiv = document.getElementById('searchResults');
+      if (!searchBar.contains(event.target) && !resultsDiv.contains(event.target)) {
+        closeSearchResults();
+      }
+    });
+    
+    /* Modal for Product Details */
+    let modalProductChart = null;
+    function showProductDetails(product) {
+      const modalInfo = document.getElementById('modalProductInfo');
+      modalInfo.innerHTML = `<strong>Product:</strong> ${product.product_name}<br>
+                             <strong>Company:</strong> ${product.company_name}<br>
+                             <strong>Country:</strong> ${product.country}<br>
+                             <strong>Sector:</strong> ${product.sector}<br>
+                             <strong>PCF:</strong> ${product.pcf}`;
+      const ctx = document.getElementById('modalProductChart').getContext('2d');
+      const emissionsData = [
+        product.upstream_emissions,
+        product.operational_emissions,
+        product.downstream_emissions
+      ];
+      if (modalProductChart) {
+        modalProductChart.destroy();
+      }
+      modalProductChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Upstream', 'Operational', 'Downstream'],
+          datasets: [{
+            label: 'Emissions',
+            data: emissionsData,
+            backgroundColor: ['#15c045', '#008a86', '#003937']
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#fff' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            },
+            x: {
+              ticks: { color: '#fff' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#fff' } }
+          }
+        }
+      });
+      document.getElementById('overlayModal').style.display = 'flex';
+    }
+    
+    function closeModal() {
+      document.getElementById('overlayModal').style.display = 'none';
+    }
+    
+    /* AEPDS Gauge Update */
+    function updateAEPDS(value) {
+      let maxValue = 0.66; // High threshold
+      let normalizedValue = (value / maxValue) * 160;
+      if (normalizedValue > 160) {
+        normalizedValue = 160;
+      }
+      document.querySelector('.gauge-fill').style.strokeDashoffset = 160 - normalizedValue;
+      document.getElementById('aepdsValue').textContent = value;
+      let fillColor;
+      if (value > 0.66) {
+        fillColor = "red";
+      } else if (value > 0.33) {
+        fillColor = "orange";
+      } else {
+        fillColor = "green";
+      }
+      document.querySelector('.gauge-fill').style.stroke = fillColor;
+    }
+    
+    // Simulate AEPDS value update (replace with actual value passed from backend)
+    setTimeout(() => {
+      updateAEPDS({{ aepd|round(2) }});
+    }, 1000);
+    
+    /* Product Emissions Estimator */
+    function estimateEmissions() {
+      const category = document.getElementById("estCategory").value;
+      const price = document.getElementById("estPrice").value;
+      if (!price) {
+        alert("Please enter a price.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("category", category);
+      formData.append("price", price);
+      fetch("/estimate_emissions", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+        } else {
+          document.getElementById("estResult").innerText = "Estimated PCF: " + data.estimated_pcf.toFixed(2) + " kg CO₂";
+        }
+      })
+      .catch(err => {
+        console.error("Error estimating emissions:", err);
+      });
+    }
+    
+  </script>
+</body>
+</html>
