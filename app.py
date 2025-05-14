@@ -609,8 +609,202 @@ def signup_consumer():
             # Render a success message on the same page
             return render_template('cons_signup.html', otp_sent=False, success=True)
 
+# Retailer Sign Up (OTP-enabled)
+@app.route('/signup_retailer', methods=['GET', 'POST'])
+def signup_retailer():
+    if request.method == 'GET':
+        return render_template('seller_signup.html', otp_sent=False, success=False)
 
+    # POST
+    # 1st submission: no 'otp' field => capture data + send OTP
+    if 'otp' not in request.form:
+        signup_data = {
+            'seller_name': request.form['seller_name'],
+            'email_id':    request.form['email_id'],
+            'password':    request.form['password'],
+            'contact_no':  request.form['contact_no'],
+            'address':     request.form['address'],
+            'city':        request.form['city']
+        }
+        session['seller_signup_data'] = signup_data
+        signup_otp = str(random.randint(100000, 999999))
+        session['seller_signup_otp'] = signup_otp
 
+        # send via email (same SMTP config as consumer)
+        sender_email    = 'envision.otp@gmail.com'
+        sender_password = 'nbzb gina qjtn dszg'
+        msg = MIMEText(f'Your OTP for retailer sign up is: {signup_otp}')
+        msg['Subject'] = 'EnVision Retailer Sign‑Up OTP'
+        msg['From']    = sender_email
+        msg['To']      = signup_data['email_id']
 
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, [signup_data['email_id']], msg.as_string())
+            server.quit()
+        except Exception as e:
+            print("OTP send error:", e)
+            return "Failed to send OTP. Please try again later.", 500
+
+        return render_template('seller_signup.html', otp_sent=True, success=False)
+
+    # 2nd submission: OTP present => verify and insert
+    submitted = request.form['otp']
+    if submitted != session.get('seller_signup_otp'):
+        return render_template(
+            'seller_signup.html',
+            otp_sent=True,
+            error="OTP incorrect. Please try again.",
+            success=False
+        )
+
+    data = session.pop('seller_signup_data', None)
+    session.pop('seller_signup_otp', None)
+    if not data:
+        return "Session expired. Please try again.", 400
+
+    # hash password
+    hashed = hashlib.sha256(data['password'].encode()).hexdigest()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # generate new ID: R-0001, R-0002, …
+    cursor.execute("SELECT id FROM seller_data ORDER BY id DESC LIMIT 1")
+    row = cursor.fetchone()
+    if row:
+        last = row[0].split('-')[1]
+        new_num = int(last) + 1
+        new_id  = f"R-{new_num:04d}"
+    else:
+        new_id = "R-0001"
+
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    cursor.execute("""
+        INSERT INTO seller_data
+          (id, seller_name, email_id, pwd, contact_no, address, city,
+           revenue, carbon_debt_sold, account_creation_date)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        new_id,
+        data['seller_name'],
+        data['email_id'],
+        hashed,
+        data['contact_no'],
+        data['address'],
+        data['city'],
+        0.00,          # revenue
+        0.00,          # carbon_debt_sold
+        now
+    ))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return render_template('seller_signup.html', otp_sent=False, success=True)
+from werkzeug.security import check_password_hash, generate_password_hash
+ADMIN_USER = 'admin'
+ADMIN_PASS_HASH = generate_password_hash('admin123')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'GET':
+        return render_template('admin_login.html')
+    username = request.form['username']
+    password = request.form['password']
+    if username == ADMIN_USER and check_password_hash(ADMIN_PASS_HASH, password):
+        session['admin_logged_in'] = True
+        return redirect(url_for('admin_dashboard'))
+    return "Invalid admin credentials", 401
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+
+    # Timeline filter
+    tf = request.args.get('timeframe', 'all')
+    now = datetime.now()
+    start = None
+    if tf == 'today':
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif tf == 'week':
+        start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    elif tf == 'month':
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif tf == 'year':
+        start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    date_filter = ''
+    params = []
+    if start:
+        date_filter = 'WHERE t.date_time >= %s'
+        params = [start]
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # 1. All Cities
+    cursor.execute(f"""
+        SELECT
+            c.city AS city,
+            SUM(t.pcf) AS emissions,
+            SUM(t.amount) AS revenue,
+            (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency
+        FROM transaction_data t
+        JOIN consumer_data c ON t.buyer_id = c.id
+        {date_filter}
+        GROUP BY c.city
+        HAVING SUM(t.pcf) > 0
+        ORDER BY emissions DESC
+    """, params)
+    cities = cursor.fetchall()
+
+    # 2. All Categories
+    cursor.execute(f"""
+        SELECT
+            p.sector AS sector,
+            SUM(t.pcf) AS emissions,
+            SUM(t.amount) AS revenue,
+            (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency
+        FROM transaction_data t
+        JOIN product_data p ON t.product_id = p.product_id
+        {date_filter}
+        GROUP BY p.sector
+        ORDER BY emissions DESC
+    """, params)
+    categories = cursor.fetchall()
+
+    # 3. All Sellers
+    cursor.execute(f"""
+        SELECT
+            s.seller_name AS name,
+            s.carbon_debt_sold AS emissions,
+            s.revenue AS revenue,
+            (s.carbon_debt_sold / NULLIF(s.revenue,0)) AS efficiency
+        FROM seller_data s
+        -- Sellers table has no timestamp, so timeframe ignored
+        ORDER BY efficiency ASC
+    """)
+    sellers = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'admin_dashboard.html',
+        cities=cities,
+        category_emissions=categories,
+        sellers=sellers,
+        selected_tf=tf
+    )
 if __name__ == '__main__':
     app.run(debug=True)
