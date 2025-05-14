@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    header { background: #003937; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.8rem; }
+    .logout-btn { background: #15c045; border: none; padding: 0.5rem 1rem; color: #fff; cursor: pointer; border-radius: 4px; }
+    .container { padding: 2rem; }
+    .filters { margin-bottom: 1rem; }
+    .filters select { padding: 0.4rem; border-radius: 4px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 1.5rem; padding: 1.5rem; }
+    .card h2 { margin-top: 0; color: #003937; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #005f56; color: #fff; position: sticky; top: 0; }
+    .table-scroll { max-height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Admin Dashboard</h1>
+    <form action="/admin/logout" method="get">
+      <button class="logout-btn">Logout</button>
+    </form>
+  </header>
+  <div class="container">
+
+    <!-- Timeframe Filter -->
+    <div class="filters">
+      <label for="timeframe">Timeline:</label>
+      <select id="timeframe" onchange="location.search = '?timeframe=' + this.value">
+        {% for key,label in [('today','Today'),('week','This Week'),('month','This Month'),('year','This Year'),('all','All Time')] %}
+          <option value="{{ key }}" {% if selected_tf == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Cities by Emissions -->
+    <div class="card">
+      <h2>Cities</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>City</th>
+              <th>Emissions (kg CO₂)</th>
+              <th>Value Added ($)</th>
+              <th>Emissions/Value Added</th>
+              <th>Consumers</th>
+              <th>Avg Emissions/Consumer</th>
+
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in cities %}
+              <tr>
+                <td>{{ row.city }}</td>
+                <td>{{ row.emissions }}</td>
+                <td>{{ row.revenue }}</td>
+                <td>{{ row.efficiency }}</td>
+                <td>{{ row.consumer_count }}</td>
+                <td>{{ row.avg_emissions_per_consumer }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Product Categories with Dropdown -->
+    <div class="card">
+      <h2>Product Categories</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Category</th>
+              <th>Emissions (kg CO₂)</th>
+              <th>Value Added ($)</th>
+              <th>Emissions/Value Added</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cat in category_emissions %}
+              {% set idx = loop.index %}
+              <tr>
+                <td><button class="dropdown-btn" onclick="toggle('cat-{{ idx }}')">▶</button></td>
+                <td>{{ cat.sector }}</td>
+                <td>{{ cat.emissions }}</td>
+                <td>{{ cat.revenue }}</td>
+                <td>{{ cat.efficiency }}</td>
+              </tr>
+              {% for comp in category_details[cat.sector] %}
+                <tr class="company-rows" id="cat-{{ idx }}">
+                  <td></td>
+                  <td style="padding-left:2rem;">{{ comp.company }}</td>
+                  <td>{{ comp.emissions }}</td>
+                  <td>{{ comp.revenue }}</td>
+                  <td>{{ comp.efficiency }}</td>
+                </tr>
+              {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- Sellers by Emissions per Revenue -->
+    <div class="card">
+      <h2>Retailers</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Seller</th>
+              <th>Emissions (kg CO₂)</th>
+              <th>Value Added ($)</th>
+              <th>Emissions/Value Added</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in sellers %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td>{{ row.emissions }}</td>
+                <td>{{ row.revenue }}</td>
+                <td>{{ row.efficiency }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+  <script>
+    function toggle(id) {
+      document.querySelectorAll(`#${id}`).forEach(r => {
+        r.style.display = r.style.display === 'table-row' ? 'none' : 'table-row';
+      });
+    }
+  </script>
+</body>
+</html>
