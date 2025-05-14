@@ -1,0 +1,114 @@
+<!-- templates/retailer_signup.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Retailer Sign Up</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #003937, #008a86);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .signup-container {
+      background: #001c13;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 350px;
+      text-align: center;
+    }
+    .signup-container h2 {
+      margin-bottom: 1.5rem;
+      color: #15c045;
+      font-size: 2rem;
+    }
+    .signup-container input, .signup-container select {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .signup-container button {
+      width: 100%;
+      padding: 12px;
+      background-color: #15c045;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    .signup-container button:hover {
+      background-color: #13a639;
+    }
+    .signup-container a {
+      display: block;
+      margin-top: 1rem;
+      color: #15c045;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .signup-container a:hover {
+      text-decoration: underline;
+    }
+    .error {
+      color: red;
+      margin-bottom: 1rem;
+    }
+    .success {
+      color: green;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-container">
+    <h2>Retailer Sign Up</h2>
+    {% if success %}
+      <p class="success">Sign Up Successful! Please <a href="{{ url_for('seller_login') }}">log in</a>.</p>
+    {% else %}
+      <form action="{{ url_for('signup_retailer') }}" method="post">
+        {% if not otp_sent %}
+          <input type="text" name="company_name" placeholder="Company Name" required />
+          <input type="text" name="contact_name" placeholder="Contact Person" required />
+          <input type="email" name="email_id" placeholder="Email" required />
+          <input type="tel" name="contact_no" placeholder="Contact Number" required />
+          <input type="text" name="address" placeholder="Address" required />
+          <label for="city">City:</label>
+          <select name="city" id="city" required>
+            <option value="">--Select City--</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Hyderabad">Hyderabad</option>
+            <option value="Chennai">Chennai</option>
+            <option value="Kolkata">Kolkata</option>
+            <option value="Pune">Pune</option>
+          </select>
+          <input type="password" name="password" placeholder="Password" required />
+          <button type="submit">Sign Up</button>
+          <a href="{{ url_for('seller_login') }}">Already have an account? Log in</a>
+        {% else %}
+          {% if error %}
+            <p class="error">{{ error }}</p>
+          {% endif %}
+          <input type="text" name="otp" placeholder="Enter OTP" required />
+          <button type="submit">Verify OTP</button>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+</body>
+</html>
