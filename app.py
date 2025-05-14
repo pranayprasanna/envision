@@ -743,25 +743,27 @@ def admin_dashboard():
     elif tf == 'year':
         start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    date_filter = ''
+    filter_clause = ''
     params = []
     if start:
-        date_filter = 'WHERE t.date_time >= %s'
+        filter_clause = 'WHERE t.date_time >= %s'
         params = [start]
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # 1. All Cities
+    # 1. All Cities with average emissions per consumer
     cursor.execute(f"""
         SELECT
             c.city AS city,
             SUM(t.pcf) AS emissions,
             SUM(t.amount) AS revenue,
-            (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency
+            (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency,
+            COUNT(DISTINCT t.buyer_id) AS consumer_count,
+            (SUM(t.pcf) / NULLIF(COUNT(DISTINCT t.buyer_id),0)) AS avg_emissions_per_consumer
         FROM transaction_data t
         JOIN consumer_data c ON t.buyer_id = c.id
-        {date_filter}
+        {filter_clause}
         GROUP BY c.city
         HAVING SUM(t.pcf) > 0
         ORDER BY emissions DESC
@@ -777,34 +779,65 @@ def admin_dashboard():
             (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency
         FROM transaction_data t
         JOIN product_data p ON t.product_id = p.product_id
-        {date_filter}
+        {filter_clause}
         GROUP BY p.sector
         ORDER BY emissions DESC
     """, params)
     categories = cursor.fetchall()
 
-    # 3. All Sellers
+    # 2a. Breakdown per category->company
+    cursor.execute(f"""
+        SELECT
+            p.sector AS sector,
+            p.company_name AS company,
+            SUM(t.pcf) AS emissions,
+            SUM(t.amount) AS revenue,
+            (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency
+        FROM transaction_data t
+        JOIN product_data p ON t.product_id = p.product_id
+        {filter_clause}
+        GROUP BY p.sector, p.company_name
+        ORDER BY p.sector, emissions DESC
+    """, params)
+    breakdown_rows = cursor.fetchall()
+
+    # Organize breakdown by sector
+    category_details = {}
+    for r in breakdown_rows:
+        category_details.setdefault(r['sector'], []).append(r)
+
+    # 3. All Sellers (based on transactions within timeframe)
     cursor.execute(f"""
         SELECT
             s.seller_name AS name,
-            s.carbon_debt_sold AS emissions,
-            s.revenue AS revenue,
-            (s.carbon_debt_sold / NULLIF(s.revenue,0)) AS efficiency
-        FROM seller_data s
-        -- Sellers table has no timestamp, so timeframe ignored
+            SUM(t.pcf) AS emissions,
+            SUM(t.amount) AS revenue,
+            (SUM(t.pcf) / NULLIF(SUM(t.amount),0)) AS efficiency
+        FROM transaction_data t
+        JOIN seller_data s ON t.seller_id = s.id
+        {filter_clause}
+        GROUP BY s.seller_name
         ORDER BY efficiency ASC
-    """)
+    """, params)
     sellers = cursor.fetchall()
 
     cursor.close()
     conn.close()
 
-    return render_template(
-        'admin_dashboard.html',
+    return render_template('admin_dashboard.html',
         cities=cities,
         category_emissions=categories,
         sellers=sellers,
+        category_details=category_details,
         selected_tf=tf
     )
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
